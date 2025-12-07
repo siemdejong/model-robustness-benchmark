@@ -1,7 +1,7 @@
 # Robustness Benchmark for MNIST Classifiers
 
 ## Abstract
-This repository presents a scientific benchmark and sensitivity analysis of image classifiers on the MNIST dataset, focusing on the effects of gamma and brightness transformations. The study extends the [scikit-learn MNIST benchmark](https://github.com/scikit-learn/scikit-learn/blob/main/benchmarks/bench_mnist.py) by introducing adaptive sampling (via [python-adaptive](https://adaptive.readthedocs.io/)) to efficiently probe the classifier's robustness to input perturbations. All code is BSD-licensed and citations for scikit-learn and python-adaptive are required for publication.
+This repository presents a scientific benchmark and sensitivity analysis of image classifiers on the MNIST dataset, focusing on the effects of gamma and brightness transformations. The study extends the [scikit-learn MNIST benchmark](https://github.com/scikit-learn/scikit-learn/blob/main/benchmarks/bench_mnist.py) by introducing adaptive sampling (via [python-adaptive](https://adaptive.readthedocs.io/)) to efficiently probe the classifier's robustness to input perturbations.
 
 ## Methods
 - **Classifier**: Multilayer Perceptron (MLP-adam) trained on MNIST using scikit-learn's pipeline.
