@@ -44,7 +44,7 @@ uv run sensitivity_analysis.py \
     - Pixel intensity histograms and mean intensity heatmap for the explored parameter space.
 
 ## Discussion
-- **Gamma and brightness extremes**: The classifier is highly sensitive to strong negative and positive brightness ($b \ll 0$  $\gg 0$) and extreme gamma ($\gamma \ll 1$ or $\gg 1$).
+- **Gamma and brightness extremes**: The classifier is highly sensitive to strong negative and positive brightness ($b \ll 0$  or $b \gg 0$) and extreme gamma ($\gamma \ll 1$ or $\gg 1$).
 These transformations can wash out or extinguish digit strokes, leading to near-random accuracy.
 - **Best-case robustness**: Mild gamma brightening ($\gamma \approx 0.4$) and slight darkening ($b \approx -0.1$) enhance digit contrast, yielding the highest accuracy.
 - **Adaptive sampling**: By focusing on regions of rapid accuracy change, the analysis efficiently identifies critical boundaries in the transform space.
