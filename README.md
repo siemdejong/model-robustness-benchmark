@@ -18,18 +18,20 @@ uv run sensitivity_analysis.py \
   --plot sensitivity_plot.png \
   --plot-transforms transforms.png \
   --gamma-min 0 --gamma-max 10 \
+  --n-workers 5 \
   --brightness-min -1 --brightness-max 1
 ```
 
 ## Results
+
 - **Summary statistics** (from `sensitivity_results.npz`):
-  - Number of sampled points: **1000**
-  - Mean accuracy: **0.546**
-  - Std accuracy: **0.317**
-  - Min accuracy: **0.089**
-  - Max accuracy: **0.978**
-  - Worst-case: $\gamma=0.0$, $b=-1.0$ $\rightarrow$ accuracy = **0.089**
-  - Best-case: $\gamma\approx0.38$, $b\approx-0.10$ $\rightarrow$ accuracy = **0.978**
+  - Number of sampled points: **2002**
+  - Mean accuracy: **0.556**
+  - Std accuracy: **0.315**
+  - Min accuracy: **0.0892**
+  - Max accuracy: **0.9784**
+  - Worst-case: $\gamma=0.0$, $b=-1.0$ $\rightarrow$ accuracy = **0.0892**
+  - Best-case: $\gamma\approx0.37$, $b\approx-0.21$ $\rightarrow$ accuracy = **0.9784**
 
 - **Visualization**:
   - ![Sensitivity Plot](sensitivity_plot.png)

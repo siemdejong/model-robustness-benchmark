@@ -25,8 +25,14 @@ from sklearn.datasets import fetch_openml, get_data_home
 from sklearn.metrics import accuracy_score
 from sklearn.utils import check_array
 
+
 # Cache directory for classifiers
 DEFAULT_CACHE_DIR = os.path.join(get_data_home(), "mnist_classifier_cache")
+
+# Globals for multiprocessing compatibility
+GLOBAL_X_TEST = None
+GLOBAL_Y_TEST = None
+GLOBAL_MODEL = None
 
 
 def load_test_data(dtype=np.float32, order="C"):
@@ -90,14 +96,11 @@ def evaluate_accuracy(X_test, y_test, model, gamma, brightness):
     return accuracy_score(y_test, y_pred)
 
 
-def create_accuracy_function(X_test, y_test, model):
-    """Create a function that computes accuracy for given (gamma, brightness) pair"""
 
-    def accuracy_func(params):
-        gamma, brightness = params
-        return evaluate_accuracy(X_test, y_test, model, gamma, brightness)
-
-    return accuracy_func
+# Top-level function for multiprocessing
+def accuracy_func(params):
+    gamma, brightness = params
+    return evaluate_accuracy(GLOBAL_X_TEST, GLOBAL_Y_TEST, GLOBAL_MODEL, gamma, brightness)
 
 
 def run_adaptive_sampling(
@@ -107,6 +110,7 @@ def run_adaptive_sampling(
     gamma_bounds=(0.2, 3.0),
     brightness_bounds=(-0.5, 0.5),
     npoints_goal=200,
+    n_workers=1,
 ):
     """
     Run adaptive sampling to explore the parameter space.
@@ -131,33 +135,49 @@ def run_adaptive_sampling(
     learner : adaptive.Learner2D
         The trained learner with sampled data
     """
-    accuracy_func = create_accuracy_function(X_test, y_test, model)
+    import concurrent.futures
+    import asyncio
 
-    # Create 2D learner
+
+    # Set globals for multiprocessing
+    global GLOBAL_X_TEST, GLOBAL_Y_TEST, GLOBAL_MODEL
+    GLOBAL_X_TEST = X_test
+    GLOBAL_Y_TEST = y_test
+    GLOBAL_MODEL = model
+
     learner = adaptive.Learner2D(
         accuracy_func, bounds=[gamma_bounds, brightness_bounds]
     )
 
-    # Run the adaptive sampling
-    print(f"Starting adaptive sampling...")
+    print(f"Starting adaptive sampling (parallel)...")
     print(f"  Gamma range: {gamma_bounds}")
     print(f"  Brightness range: {brightness_bounds}")
     print(f"  Target points: {npoints_goal}")
+    print(f"  Number of workers: {n_workers}")
     print()
 
-    # Use manual loop with progress bar
-    with tqdm(total=npoints_goal, desc="Sampling", unit="pts") as pbar:
-        while learner.npoints < npoints_goal:
-            # Get the next point to evaluate
-            point, _ = learner.ask(1)
-            # Evaluate the function at this point
-            value = accuracy_func(point[0])
-            # Tell the learner the result
-            learner.tell(point[0], value)
-            pbar.update(1)
+    # Use adaptive.Runner for parallel execution
+    with concurrent.futures.ProcessPoolExecutor(max_workers=n_workers) as executor:
+        runner = adaptive.Runner(
+            learner,
+            goal=lambda l: l.npoints >= npoints_goal,
+            executor=executor,
+            shutdown_executor=True,
+        )
+        # tqdm progress bar integration
+        pbar = tqdm(total=npoints_goal, desc="Sampling", unit="pts")
+        last_n = 0
+        async def progress_watcher():
+            while learner.npoints < npoints_goal:
+                await asyncio.sleep(0.5)
+                pbar.update(learner.npoints - pbar.n)
+            pbar.update(npoints_goal - pbar.n)
+            pbar.close()
+        loop = runner.ioloop
+        tasks = [runner.task, progress_watcher()]
+        loop.run_until_complete(asyncio.gather(*tasks))
 
     print(f"Sampling complete! Total points: {learner.npoints}")
-
     return learner
 
 
@@ -524,6 +544,12 @@ if __name__ == "__main__":
         help="Number of points to sample adaptively",
     )
     parser.add_argument(
+        "--n-workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers for adaptive sampling (python-adaptive)",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         default="sensitivity_results.npz",
@@ -562,6 +588,8 @@ if __name__ == "__main__":
     baseline_acc = evaluate_accuracy(X_test, y_test, model, gamma=1.0, brightness=0.0)
     print(f"\nBaseline accuracy (gamma=1, brightness=0): {baseline_acc:.4f}")
 
+    import time
+    start_time = time.time()
     # Run adaptive sampling
     learner = run_adaptive_sampling(
         model,
@@ -570,7 +598,10 @@ if __name__ == "__main__":
         gamma_bounds=(args.gamma_min, args.gamma_max),
         brightness_bounds=(args.brightness_min, args.brightness_max),
         npoints_goal=args.npoints,
+        n_workers=args.n_workers,
     )
+    elapsed = time.time() - start_time
+    print(f"\nElapsed time for adaptive sampling: {elapsed:.2f} seconds\n")
 
     # Analyze and display results
     analyze_results(learner)
